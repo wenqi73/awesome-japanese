@@ -35,6 +35,16 @@ jobs:
             const MARKER = "<!-- pr-template-check -->";
             const TEMPLATE_FILE = ".github/pull_request_template.md";
 
+            // Maintainers are exempt. The template is written for resource
+            // submissions; its checklist ("the item I am adding is awesome")
+            // is meaningless on an infrastructure or docs PR. Same skip as
+            // pr-requires-approved-issue.yml.
+            const MAINTAINER_ROLES = ["OWNER", "MEMBER", "COLLABORATOR"];
+            if (MAINTAINER_ROLES.includes(pr.author_association)) {
+              core.info(`Author is ${pr.author_association}; skipping template enforcement.`);
+              return;
+            }
+
             // Meta-PRs that edit the template itself are exempt -- they
             // shouldn't be forced to comply with the template they're changing.
             const changedFiles = await github.paginate(github.rest.pulls.listFiles, {
