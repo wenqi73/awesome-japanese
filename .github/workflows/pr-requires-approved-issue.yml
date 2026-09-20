@@ -1,0 +1,209 @@
+name: PR requires approved issue
+
+# Enforces the "issue first" rule from contributing.md: a contributor opens an
+# issue, a maintainer approves it (by applying the `approved` label), and only
+# then is a pull request welcome. A PR that doesn't link an approved issue is
+# labelled, commented on, and closed automatically.
+#
+# Exempt: maintainers (OWNER/MEMBER/COLLABORATOR) and PRs that don't touch
+# readme.md -- typo fixes, docs, and CI changes don't need an issue first.
+#
+# Uses pull_request_target so the workflow has a write token even for PRs from
+# forks (the default for outside contributors). This is safe because the job
+# only reads the PR body from the event payload -- it never checks out or runs
+# the PR's code.
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  issue-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a linked, approved issue
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request;
+            const number = pr.number;
+
+            const LABEL = "needs-issue";
+            const APPROVED_LABEL = "approved";
+            const MARKER = "<!-- pr-requires-approved-issue -->";
+            const LIST_FILE = "readme.md";
+            const CONTRIBUTING = `https://github.com/${owner}/${repo}/blob/${context.payload.repository.default_branch}/contributing.md#suggesting-new-resources`;
+            const NEW_ISSUE = `https://github.com/${owner}/${repo}/issues/new/choose`;
+
+            // --- Exemptions -------------------------------------------------
+            // Maintainers are trusted to curate directly.
+            const MAINTAINER_ROLES = ["OWNER", "MEMBER", "COLLABORATOR"];
+            if (MAINTAINER_ROLES.includes(pr.author_association)) {
+              core.info(`Author is ${pr.author_association}; skipping issue enforcement.`);
+              return;
+            }
+
+            // Only additions/changes to the list itself need an approved issue.
+            const changedFiles = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: number,
+              per_page: 100,
+            });
+            const touchesList = changedFiles.some((f) => f.filename === LIST_FILE);
+            if (!touchesList) {
+              core.info(`PR does not touch ${LIST_FILE}; skipping issue enforcement.`);
+              return;
+            }
+
+            // --- Collect referenced issue numbers ---------------------------
+            // Accepts the GitHub closing keywords, in "Closes #12" form or as a
+            // full URL, anywhere in the PR description. Comments (<!-- ... -->)
+            // are stripped first so the template's own hints don't count.
+            const body = (pr.body || "").replace(/<!--[\s\S]*?-->/g, "");
+            const KEYWORDS = "close[sd]?|fix(?:e[sd])?|resolve[sd]?";
+            const refs = new Set();
+            const shortRe = new RegExp(`\\b(?:${KEYWORDS})\\b\\s*:?\\s*#(\\d+)`, "gi");
+            const urlRe = new RegExp(
+              `\\b(?:${KEYWORDS})\\b\\s*:?\\s*https?://github\\.com/${owner}/${repo}/issues/(\\d+)`,
+              "gi"
+            );
+            for (const re of [shortRe, urlRe]) {
+              let m;
+              while ((m = re.exec(body)) !== null) {
+                refs.add(Number(m[1]));
+              }
+            }
+
+            // --- Validate the references ------------------------------------
+            const problems = [];
+            let approvedIssue = null;
+
+            if (refs.size === 0) {
+              problems.push(
+                `This pull request doesn't link an issue. Open a suggestion issue first, wait for a maintainer to approve it, then link it here with \`Closes #<number>\` in the description.`
+              );
+            }
+
+            for (const num of refs) {
+              let issue;
+              try {
+                issue = (await github.rest.issues.get({ owner, repo, issue_number: num })).data;
+              } catch (e) {
+                problems.push(`\`#${num}\` doesn't exist in this repository.`);
+                continue;
+              }
+              if (issue.pull_request) {
+                problems.push(`\`#${num}\` is a pull request, not a suggestion issue.`);
+                continue;
+              }
+              const approved = (issue.labels || []).some(
+                (l) => (typeof l === "string" ? l : l.name) === APPROVED_LABEL
+              );
+              if (!approved) {
+                problems.push(
+                  `Issue [#${num}](${issue.html_url}) hasn't been approved yet — a maintainer applies the \`${APPROVED_LABEL}\` label once a suggestion is accepted.`
+                );
+                continue;
+              }
+              approvedIssue = num;
+              break;
+            }
+
+            const compliant = approvedIssue !== null;
+
+            // --- Find an existing sticky comment from this workflow ----------
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: number,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(MARKER));
+
+            if (compliant) {
+              const hasLabel = (pr.labels || []).some((l) => l.name === LABEL);
+              if (hasLabel) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: number,
+                    name: LABEL,
+                  });
+                } catch (e) {
+                  core.info(`Could not remove label (may already be gone): ${e.message}`);
+                }
+              }
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                  body: `${MARKER}\n✅ Thanks — this PR is linked to approved issue #${approvedIssue}.`,
+                });
+              }
+              core.info(`PR is linked to approved issue #${approvedIssue}.`);
+              return;
+            }
+
+            // --- Non-compliant: label, explain, and close --------------------
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: number,
+              labels: [LABEL],
+            });
+
+            const message = [
+              MARKER,
+              `👋 Thanks for wanting to contribute! This list works **issue first**, and this pull request was closed automatically because it doesn't meet that requirement:`,
+              "",
+              ...problems.map((p) => `- ${p}`),
+              "",
+              "### How to get your resource added",
+              "",
+              `1. **[Open a suggestion issue](${NEW_ISSUE})** with the name, link, and why it belongs here.`,
+              "2. **Wait for a maintainer to approve it.** Approval means the `approved` label is applied to your issue. This keeps you from doing work on something that turns out to be a duplicate or out of scope.",
+              "3. **Then open a pull request** and put `Closes #<issue number>` in the description.",
+              "",
+              `Please read the [contribution guidelines](${CONTRIBUTING}) before resubmitting.`,
+              "",
+              "If your issue is already approved, add `Closes #<number>` to this PR's description and reopen it — the check runs again automatically.",
+            ].join("\n");
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body: message,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: number,
+                body: message,
+              });
+            }
+
+            if (pr.state === "open") {
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: number,
+                state: "closed",
+              });
+            }
+
+            core.setFailed(
+              `PR #${number} was closed: no approved issue linked (${problems.length} issue(s)).`
+            );
