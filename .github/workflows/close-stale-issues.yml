@@ -1,14 +1,18 @@
 name: Close stale issues
 
+# Closes issues opened by outside contributors after a long stretch of
+# inactivity. Issues opened by maintainers (OWNER/MEMBER/COLLABORATOR) are
+# never auto-closed -- they are the backlog, not abandoned requests.
+
 on:
   schedule:
     - cron: "30 0 * * *"
   workflow_dispatch:
     inputs:
       stale_days:
-        description: "Days since latest issue activity before auto-close"
+        description: "Days since latest issue activity before auto-close (maintainer-opened issues are exempt)"
         required: false
-        default: "90"
+        default: "180"
 
 permissions:
   contents: read
@@ -27,12 +31,17 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const configuredStaleDays = Number.parseInt(process.env.INPUT_STALE_DAYS, 10);
-            const STALE_DAYS = Number.isFinite(configuredStaleDays) && configuredStaleDays > 0 ? configuredStaleDays : 90;
+            const STALE_DAYS = Number.isFinite(configuredStaleDays) && configuredStaleDays > 0 ? configuredStaleDays : 180;
             const cutoffMs = STALE_DAYS * 24 * 60 * 60 * 1000;
             const now = Date.now();
 
             // Issues carrying any of these labels are never auto-closed.
             const EXEMPT_LABELS = new Set(["pinned", "keep-open", "security"]);
+
+            // Neither are issues opened by a maintainer: those are curation
+            // notes and planned work, and going quiet doesn't make them stale.
+            // Only outside contributors' issues age out.
+            const MAINTAINER_ROLES = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 
             // Build the set of issues that an open PR is actively tackling. Their
             // fate follows the PR: they are closed by close-stale-change-request-prs.yml
@@ -77,6 +86,11 @@ jobs:
             for (const issue of issues) {
               // listForRepo returns PRs too; skip them (PRs have a pull_request field).
               if (issue.pull_request) {
+                continue;
+              }
+
+              if (MAINTAINER_ROLES.has(issue.author_association)) {
+                core.info(`Issue #${issue.number} was opened by a maintainer (${issue.author_association}); skipping.`);
                 continue;
               }
 
