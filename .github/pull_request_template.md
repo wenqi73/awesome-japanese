@@ -2,7 +2,7 @@
 
 ## Description
 <!-- Briefly describe what you are adding or changing -->
-<!-- If this PR resolves an open issue, write "Closes #<number>" here so the issue is linked and closes with this PR. -->
+<!-- REQUIRED for list additions/changes: write "Closes #<number>" here, pointing at your suggestion issue. It must already carry the `approved` label — a maintainer applies it once your suggestion is accepted. PRs that add or change a list item without a linked, approved issue are closed automatically. See contributing.md. -->
 <!-- Pricing: do NOT use the word "free" — items without `:moneybag:` are already considered free. If the item has freemium tiers, in-app purchases, or paid plans, add the `:moneybag:` emoji. -->
 <!-- Generative AI: add the `:robot:` emoji if the item uses generative AI in the product, or if AI did most (>50%) of building it — see the AI Assistance survey below. -->
 <!-- Self-nominations: this list is not a marketing channel. If you built this item, it must be at least 6 months old and, if paid, have at least 100 users — fill in the Self-Nomination Eligibility section below. -->
@@ -17,7 +17,7 @@
 
 ## Checklist
 <!-- Put an `x` in all the boxes that apply -->
-- [ ] I have read the [contribution guidelines](contributing.md)
+- [ ] I have read the [contribution guidelines](contributing.md) and followed the issue-first process
 - [ ] The item I am adding is awesome and fits the theme of this list
 - [ ] The link is working and points to the intended content
 - [ ] The description is concise and informative, and does not use the word "free" (items without `:moneybag:` are already considered free)
@@ -26,7 +26,7 @@
 - [ ] If the item starts charging money after this PR is merged (paid plans, in-app purchases, or freemium tiers), I will revise its description here to add the `:moneybag:` emoji — otherwise the entry may be removed without warning
 - [ ] Item description is under 100 characters (excluding emoji)
 - [ ] I have added the item to the appropriate category
-- [ ] If this PR resolves an issue, I linked it with `Closes #<number>` in the description above
+- [ ] If this PR adds or changes a list item, I opened a suggestion issue first, a maintainer applied the `approved` label to it, and I linked it with `Closes #<number>` in the description above
 - [ ] I understand this PR may be automatically closed after 90 days if there is no follow-up after a requested change, and that closing it will also close any issue it is linked to
 - [ ] I have not offered, requested, or arranged a reciprocal link, payment, or other consideration in exchange for this item being listed
 

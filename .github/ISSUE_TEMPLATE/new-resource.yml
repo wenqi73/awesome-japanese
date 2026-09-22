@@ -1,0 +1,114 @@
+name: Suggest a resource
+description: Propose a new item for the list. Required before opening a pull request.
+title: "[Suggestion]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a resource! This list works **issue first**:
+
+        1. You open this issue.
+        2. A maintainer reviews it and, if accepted, applies the `approved` label.
+        3. **Then** you open a pull request with `Closes #<this issue number>` in the description.
+
+        Pull requests that add a list item without a linked, approved issue are closed
+        automatically. Please read the
+        [contribution guidelines](../blob/main/contributing.md) first.
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      description: The name of the resource, exactly as it should appear on the list.
+      placeholder: Example Japanese Dictionary
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Link
+      description: Direct `https://` link. No affiliate, referral, or tracking parameters.
+      placeholder: https://example.com
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Proposed description
+      description: >
+        One concise sentence, under 100 characters, capitalized and ending with a period.
+        Don't use the word "free" — items without `:moneybag:` are already treated as free.
+      placeholder: Japanese-English dictionary with example sentences and kanji stroke order.
+    validations:
+      required: true
+  - type: input
+    id: category
+    attributes:
+      label: Suggested category
+      description: Which existing section of the readme does it belong in?
+      placeholder: Dictionaries
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does this belong on the list?
+      description: What makes it genuinely useful for learners? How is it different from what's already listed?
+    validations:
+      required: true
+  - type: dropdown
+    id: pricing
+    attributes:
+      label: Pricing
+      description: Anything other than "completely free" gets the `:moneybag:` emoji.
+      options:
+        - Completely free
+        - Has paid plans, in-app purchases, or freemium tiers
+    validations:
+      required: true
+  - type: dropdown
+    id: genai
+    attributes:
+      label: Generative AI
+      description: >
+        Gets the `:robot:` emoji if the product uses generative AI, or if generative AI
+        did most (>50%) of building it. This is a neutral transparency tag.
+      options:
+        - No generative AI involved
+        - The product itself uses generative AI
+        - Generative AI did most (>50%) of building it
+        - Both of the above
+    validations:
+      required: true
+  - type: dropdown
+    id: affiliation
+    attributes:
+      label: Your role
+      options:
+        - I'm nominating someone else's resource
+        - I'm affiliated with this item (I built or work on it)
+    validations:
+      required: true
+  - type: textarea
+    id: eligibility
+    attributes:
+      label: Self-nomination eligibility
+      description: >
+        Only if you're affiliated. Self-nominated items must be at least 6 months old and,
+        if paid, have at least 100 users — with proof. Link public records here (launch post,
+        changelog, store listing with release date, Wayback snapshot). Don't post private
+        analytics; write "Will provide privately" and a maintainer will reach out.
+        See [contributing.md](../blob/main/contributing.md#eligibility-for-self-nominated-items).
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before you submit
+      options:
+        - label: I checked the readme and open issues, and this resource isn't already listed or suggested.
+          required: true
+        - label: I have read the [contribution guidelines](../blob/main/contributing.md).
+          required: true
+        - label: The link works and contains no affiliate, referral, or tracking parameters.
+          required: true
+        - label: I understand I should wait for the `approved` label before opening a pull request.
+          required: true
